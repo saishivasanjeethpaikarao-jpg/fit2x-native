@@ -1310,6 +1310,39 @@ async function fetchNativeSteps() {
     }
   } catch (e) {}
 }
+
+// Native local notifications (Capacitor app only)
+async function setupNativeNotifications() {
+  if (!isNativeApp) return;
+  try {
+    const { LocalNotifications } = window.Capacitor.Plugins;
+    if (!LocalNotifications) return;
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display !== 'granted') return;
+    // Cancel existing
+    try { await LocalNotifications.cancel({ notifications: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }] }); } catch {}
+    const reminders = [
+      { id: 1, hour: 7, minute: 30, title: 'FIT2X', body: 'Gym time! Missed gym? Open the app for a quick home workout.' },
+      { id: 2, hour: 12, minute: 15, title: 'FIT2X', body: 'Lunch time! Log your meal to stay on track.' },
+      { id: 3, hour: 17, minute: 0, title: 'FIT2X', body: 'Snack time! Grab some protein.' },
+      { id: 4, hour: 20, minute: 30, title: 'FIT2X', body: 'Dinner time! Log your meal.' }
+    ];
+    const now = new Date();
+    const notifications = reminders.map(r => {
+      const at = new Date();
+      at.setHours(r.hour, r.minute, 0, 0);
+      if (at <= now) at.setDate(at.getDate() + 1);
+      return { id: r.id, title: r.title, body: r.body, schedule: { at: at, repeats: true, every: 'day' } };
+    });
+    await LocalNotifications.schedule({ notifications });
+  } catch (e) {}
+}
+// Auto-setup notifications when app starts
+if (typeof isNativeApp !== 'undefined' && isNativeApp) {
+  document.addEventListener('deviceready', setupNativeNotifications);
+  setTimeout(setupNativeNotifications, 3000);
+}
+
 function startNativeStepsSync() {
   if (!isNativeApp || nativeStepsTimer) return;
   fetchNativeSteps();
