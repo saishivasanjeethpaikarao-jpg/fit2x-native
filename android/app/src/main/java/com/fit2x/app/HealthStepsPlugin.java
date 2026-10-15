@@ -2,9 +2,10 @@ package com.fit2x.app;
 
 import android.content.Context;
 import androidx.health.connect.client.HealthConnectClient;
+import androidx.health.connect.client.aggregate.AggregateMetric;
+import androidx.health.connect.client.aggregate.AggregationResult;
 import androidx.health.connect.client.records.StepsRecord;
 import androidx.health.connect.client.request.AggregateRequest;
-import androidx.health.connect.client.response.AggregationResult;
 import androidx.health.connect.client.time.TimeRangeFilter;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -15,14 +16,13 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import kotlin.coroutines.Continuation;
-import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
 import kotlinx.coroutines.BuildersKt;
 import kotlinx.coroutines.CoroutineScope;
-import kotlinx.coroutines.CoroutineScopeKt;
 
 @CapacitorPlugin(name = "HealthSteps")
 public class HealthStepsPlugin extends Plugin {
@@ -30,7 +30,7 @@ public class HealthStepsPlugin extends Plugin {
     @PluginMethod
     public void getTodaySteps(PluginCall call) {
         Context context = getContext();
-        int availability = HealthConnectClient.getSdkStatus(context, "com.google.android.apps.healthdata");
+        int availability = HealthConnectClient.getSdkStatus(context);
 
         if (availability != HealthConnectClient.SDK_AVAILABLE) {
             JSObject ret = new JSObject();
@@ -47,11 +47,12 @@ public class HealthStepsPlugin extends Plugin {
         ZonedDateTime startOfDay = LocalDate.now(zone).atStartOfDay(zone);
         ZonedDateTime now = ZonedDateTime.now(zone);
 
-        Set<androidx.health.connect.client.aggregate.AggregateMetric<Long>> metrics =
-            Collections.singleton(StepsRecord.COUNT_TOTAL);
+        Set<AggregateMetric<Long>> metrics = new HashSet<>();
+        metrics.add(StepsRecord.COUNT_TOTAL);
         AggregateRequest request = new AggregateRequest(
             metrics,
-            TimeRangeFilter.between(startOfDay.toInstant(), now.toInstant())
+            TimeRangeFilter.between(startOfDay.toInstant(), now.toInstant()),
+            new HashSet<>()
         );
 
         CompletableFuture<Long> future = new CompletableFuture<>();
@@ -86,7 +87,7 @@ public class HealthStepsPlugin extends Plugin {
 
     @PluginMethod
     public void isAvailable(PluginCall call) {
-        int status = HealthConnectClient.getSdkStatus(getContext(), "com.google.android.apps.healthdata");
+        int status = HealthConnectClient.getSdkStatus(getContext());
         JSObject ret = new JSObject();
         ret.put("available", status == HealthConnectClient.SDK_AVAILABLE);
         ret.put("status", status);
